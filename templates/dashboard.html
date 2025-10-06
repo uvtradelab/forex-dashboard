@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Forex Trading Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .stat-title {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-icon {
+            font-size: 2rem;
+            margin-right: 0.5rem;
+            opacity: 0.7;
+        }
+        
+        .profit { color: #22c55e; }
+        .loss { color: #ef4444; }
+        .neutral { color: #3b82f6; }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn-test {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .btn-test:hover {
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+        }
+        
+        .chart-section, .trades-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .section-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem 2rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            padding: 2rem;
+            height: 400px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 600px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        
+        th {
+            background: rgba(248, 250, 252, 0.8);
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+        
+        tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online { background: #22c55e; }
+        .status-offline { background: #ef4444; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .message {
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #166534;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #991b1b;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #1e40af;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 1rem auto;
+                padding: 0 0.5rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Forex Trading Dashboard</h1>
+        <p>Real-time algorithm performance monitoring</p>
+    </div>
+    
+    <div class="container">
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Total Trades</div>
+                <div class="stat-value neutral">
+                    <span class="stat-icon">📊</span>
+                    <span id="totalTrades">-</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot status-offline" id="statusIndicator"></span>
+                    <span id="statusText">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">Total Profit</div>
+                <div class="stat-value" id="totalProfitContainer">
+                    <span class="stat-icon">💰</span>
+                    <span id="totalProfit">-</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">Win Rate</div>
+                <div class="stat-value neutral">
+                    <span class="stat-icon">🎯</span>
+                    <span id="winRate">-</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">Average Profit</div>
+                <div class="stat-value" id="avgProfitContainer">
+                    <span class="stat-icon">📈</span>
+                    <span id="avgProfit">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn" onclick="refreshData()">🔄 Refresh Data</button>
+            <button class="btn btn-test" onclick="testConnection()">🔍 Test Connection</button>
+            <div style="flex-grow: 1;"></div>
+            <span id="lastUpdate" style="color: #666; font-size: 0.9rem;"></span>
+        </div>
+        
+        <!-- Messages -->
+        <div id="messages"></div>
+        
+        <!-- Equity Curve Chart -->
+        <div class="chart-section">
+            <div class="section-header">📈 Equity Curve</div>
+            <div class="chart-container">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Trades Table -->
+        <div class="trades-section">
+            <div class="section-header">📋 Recent Trades</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Lots</th>
+                            <th>Open Price</th>
+                            <th>Close Price</th>
+                            <th>Profit</th>
+                            <th>Open Time</th>
+                            <th>Close Time</th>
+                        </tr>
+                    </thead>
+                                        <tbody id="tradesBody">
+                        <tr>
+                            <td colspan="8" class="loading">
+                                <div class="loading-spinner"></div>
+                                Loading trades...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let equityChart;
+        
+        function showMessage(message, type = 'success') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                if (stats.error) {
+                    throw new Error(stats.error);
+                }
+                
+                // Update stats display
+                document.getElementById('totalTrades').textContent = stats.total_trades || 0;
+                document.getElementById('winRate').textContent = (stats.win_rate || 0).toFixed(1) + '%';
+                
+                // Update total profit
+                const totalProfit = stats.total_profit || 0;
+                const totalProfitEl = document.getElementById('totalProfit');
+                const totalProfitContainer = document.getElementById('totalProfitContainer');
+                totalProfitEl.textContent = '$' + totalProfit.toFixed(2);
+                totalProfitContainer.className = 'stat-value ' + (totalProfit >= 0 ? 'profit' : 'loss');
+                
+                // Update average profit
+                const avgProfit = stats.avg_profit || 0;
+                const avgProfitEl = document.getElementById('avgProfit');
+                const avgProfitContainer = document.getElementById('avgProfitContainer');
+                avgProfitEl.textContent = '$' + avgProfit.toFixed(2);
+                avgProfitContainer.className = 'stat-value ' + (avgProfit >= 0 ? 'profit' : 'loss');
+                
+                // Update status indicator
+                const statusIndicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                if (stats.total_trades > 0) {
+                    statusIndicator.className = 'status-dot status-online';
+                    statusText.textContent = 'Connected';
+                } else {
+                    statusIndicator.className = 'status-dot status-offline';
+                    statusText.textContent = 'No trades yet';
+                }
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                showMessage('Error loading statistics: ' + error.message, 'error');
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                const response = await fetch('/api/trades?limit=50');
+                const trades = await response.json();
+                
+                const tradesBody = document.getElementById('tradesBody');
+                
+                if (trades.error) {
+                    throw new Error(trades.error);
+                }
+                
+                if (!trades || trades.length === 0) {
+                    tradesBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="loading">
+                                📭 No trades found yet.<br>
+                                <small>Make sure your EA is running and Firebase service is active.</small>
+                            </td>
+                        </tr>`;
+                    return;
+                }
+                
+                tradesBody.innerHTML = trades.map(trade => `
+                    <tr>
+                        <td><strong>${trade.symbol}</strong></td>
+                        <td>
+                            <span style="color: ${trade.trade_type === 'BUY' ? '#22c55e' : '#ef4444'}">
+                                ${trade.trade_type === 'BUY' ? '🟢' : '🔴'} ${trade.trade_type}
+                            </span>
+                        </td>
+                        <td>${parseFloat(trade.lots).toFixed(2)}</td>
+                        <td>${parseFloat(trade.open_price).toFixed(5)}</td>
+                        <td>${parseFloat(trade.close_price).toFixed(5)}</td>
+                        <td class="${parseFloat(trade.profit) >= 0 ? 'profit' : 'loss'}" style="font-weight: bold;">
+                            ${parseFloat(trade.profit) >= 0 ? '+' : ''}$${parseFloat(trade.profit).toFixed(2)}
+                        </td>
+                        <td>${formatDateTime(trade.open_time)}</td>
+                        <td>${formatDateTime(trade.close_time)}</td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading trades:', error);
+                document.getElementById('tradesBody').innerHTML = `
+                    <tr>
+                        <td colspan="8" class="error">
+                            ❌ Error loading trades: ${error.message}
+                        </td>
+                    </tr>`;
+            }
+        }
+        
+        async function loadEquityCurve() {
+            try {
+                const response = await fetch('/api/equity-curve');
+                const equityData = await response.json();
+                
+                const ctx = document.getElementById('equityChart').getContext('2d');
+                
+                if (equityChart) {
+                    equityChart.destroy();
+                }
+                
+                if (!equityData || equityData.length === 0) {
+                    ctx.fillStyle = '#666';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No equity data available yet', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                    return;
+                }
+                
+                equityChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: equityData.map(d => formatDateTime(d.date)),
+                        datasets: [{
+                            label: 'Account Equity',
+                            data: equityData.map(d => d.equity),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#667eea',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Account Equity Over Time'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Profit ($)'
+                                },
+                                beginAtZero: true
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error loading equity curve:', error);
+            }
+        }
+        
+        async function testConnection() {
+            showMessage('Testing Firebase connection...', 'info');
+            
+            try {
+                const response = await fetch('/api/test');
+                const result = await response.json();
+                
+                let message = `🔗 Firebase: ${result.firebase_connected ? '✅ Connected' : '❌ Failed'}\n`;
+                message += `📊 Trades in database: ${result.trade_count || 0}\n`;
+                message += `📁 MT5 file exists: ${result.mt5_file_exists ? '✅ Yes' : '❌ No'}`;
+                
+                if (result.error) {
+                    message += `\n❌ Error: ${result.error}`;
+                    showMessage(message, 'error');
+                } else if (result.firebase_connected && result.trade_count > 0) {
+                    message += '\n🎉 System is working perfectly!';
+                    showMessage(message, 'success');
+                } else {
+                    message += '\n⚠️ Connected but no trades found. Make sure your EA and Firebase service are running.';
+                    showMessage(message, 'info');
+                }
+                
+            } catch (error) {
+                showMessage('Connection test failed: ' + error.message, 'error');
+            }
+        }
+        
+        function formatDateTime(dateStr) {
+            try {
+                // Handle different date formats
+                let date;
+                if (dateStr.includes('.')) {
+                    // Format: 2024.01.15 10:30:00
+                    date = new Date(dateStr.replace(/\./g, '-'));
+                } else {
+                    date = new Date(dateStr);
+                }
+                return date.toLocaleString();
+            } catch {
+                return dateStr;
+            }
+        }
+        
+        function refreshData() {
+            loadStats();
+            loadTrades();
+            loadEquityCurve();
+            document.getElementById('lastUpdate').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+            showMessage('Data refreshed successfully!', 'success');
+        }
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+        
+        // Add some loading animation
+        window.addEventListener('load', function() {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s';
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
