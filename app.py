@@ -132,6 +132,38 @@ def get_trades():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/api/equity-curve')
+def get_equity_curve():
+    """Get equity curve data for charting"""
+    try:
+        trades = dashboard.get_trades_from_firebase(1000)  # Get more trades for curve
+        
+        if not trades:
+            return jsonify([])
+        
+        # Sort trades by timestamp (oldest first)
+        sorted_trades = sorted(trades, key=lambda x: x.get('timestamp', ''), reverse=False)
+        
+        equity_data = []
+        running_profit = 0
+        
+        for trade in sorted_trades:
+            running_profit += float(trade.get('profit', 0))
+            
+            # Use close_time if available, otherwise use timestamp
+            trade_time = trade.get('close_time', trade.get('timestamp', ''))
+            
+            equity_data.append({
+                'date': trade_time,
+                'equity': round(running_profit, 2)
+            })
+        
+        return jsonify(equity_data)
+        
+    except Exception as e:
+        print(f"Error getting equity curve: {e}")
+        return jsonify({'error': str(e)})
+
 @app.route('/api/upload-trades', methods=['POST'])
 def upload_trades():
     """API endpoint to receive trades from local EA system"""
