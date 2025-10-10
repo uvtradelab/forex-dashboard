@@ -6,6 +6,10 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 
+# Suppress Firebase warnings
+os.environ['GRPC_VERBOSITY'] = 'ERROR'
+os.environ['GLOG_minloglevel'] = '2'
+
 app = Flask(__name__)
 
 # Initialize Firebase
@@ -13,10 +17,6 @@ cred = credentials.Certificate('firebase-key.json')
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
-
-# Global variables for background service
-trades_data = []
-last_check_time = datetime.now()
 
 class OnlineFirebaseService:
     def __init__(self):
@@ -28,11 +28,9 @@ class OnlineFirebaseService:
         
         for trade_data in trades_list:
             try:
-                # Create unique trade ID
                 trade_id = f"{trade_data['symbol']}_{trade_data['timestamp'].replace(' ', '_').replace(':', '-').replace('.', '_')}"
-                
-                # Check if trade already exists
                 doc_ref = db.collection(self.trades_collection).document(trade_id)
+                
                 if not doc_ref.get().exists:
                     trade_data['firebase_timestamp'] = firestore.SERVER_TIMESTAMP
                     doc_ref.set(trade_data)
@@ -45,7 +43,6 @@ class OnlineFirebaseService:
                 
         return uploaded_count
 
-# Initialize service
 firebase_service = OnlineFirebaseService()
 
 class ForexDashboard:
@@ -121,7 +118,7 @@ def get_stats():
         stats = dashboard.calculate_stats(trades)
         return jsonify(stats)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trades')
 def get_trades():
@@ -130,27 +127,35 @@ def get_trades():
         trades = dashboard.get_trades_from_firebase(limit)
         return jsonify(trades)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/equity-curve')
-def get_equity_curve():
+@app.route('/api/equity-curve', methods=['GET'])
+def equity_curve():
     """Get equity curve data for charting"""
     try:
-        trades = dashboard.get_trades_from_firebase(1000)  # Get more trades for curve
+        print("📊 Equity curve endpoint called")
+        
+        trades = dashboard.get_trades_from_firebase(100)
         
         if not trades:
+            print("⚠️ No trades found")
             return jsonify([])
         
-        # Sort trades by timestamp (oldest first)
-        sorted_trades = sorted(trades, key=lambda x: x.get('timestamp', ''), reverse=False)
+        print(f"✅ Found {len(trades)} trades")
+        
+        # Sort trades by timestamp
+        sorted_trades = sorted(
+            trades, 
+            key=lambda x: x.get('timestamp', ''), 
+            reverse=False
+        )
         
         equity_data = []
         running_profit = 0
         
         for trade in sorted_trades:
-            running_profit += float(trade.get('profit', 0))
-            
-            # Use close_time if available, otherwise use timestamp
+            profit = float(trade.get('profit', 0))
+            running_profit += profit
             trade_time = trade.get('close_time', trade.get('timestamp', ''))
             
             equity_data.append({
@@ -158,11 +163,17 @@ def get_equity_curve():
                 'equity': round(running_profit, 2)
             })
         
+        print(f"📈 Returning {len(equity_data)} equity points")
         return jsonify(equity_data)
         
     except Exception as e:
-        print(f"Error getting equity curve: {e}")
-        return jsonify({'error': str(e)})
+        print(f"❌ Equity curve error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'message': 'Failed to load equity curve'
+        }), 500
 
 @app.route('/api/upload-trades', methods=['POST'])
 def upload_trades():
@@ -186,7 +197,7 @@ def upload_trades():
             'success': False,
             'error': str(e),
             'message': 'Failed to upload trades'
-        })
+        }), 500
 
 @app.route('/api/test')
 def test_firebase():
@@ -208,7 +219,7 @@ def test_firebase():
             'firebase_connected': False,
             'error': str(e),
             'message': 'Firebase connection failed'
-        })
+        }), 500
 
 @app.route('/health')
 def health_check():
@@ -218,9 +229,19 @@ def health_check():
         'message': 'Forex Dashboard is running'
     })
 
-# Run the app
+# Debug: Print all routes on startup
+@app.before_first_request
+def log_routes():
+    print("\n" + "="*50)
+    print("📋 REGISTERED ROUTES:")
+    print("="*50)
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(rule.methods)
+        print(f"  {rule.endpoint:30s} {methods:20s} {rule}")
+    print("="*50 + "\n")
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     print(f"🚀 Starting Forex Dashboard on port {port}")
     print("🔥 Firebase integration enabled")
     print("📊 Dashboard ready for live trading data")
